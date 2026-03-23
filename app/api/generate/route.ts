@@ -15,6 +15,7 @@ import type {
   ChangelogResponse,
   GenerateRequest,
 } from "@/lib/types";
+import type { GeminiNarrative } from "@/lib/gemini";
 
 function isGenerateRequest(body: unknown): body is GenerateRequest {
   if (!body || typeof body !== "object") return false;
@@ -92,23 +93,38 @@ export async function POST(request: Request) {
     const merged = mergeOtherIntoDevExperience(parsed);
     const miniSummary = buildMiniSummary(merged, stats);
 
-    let narrative;
-    try {
-      narrative = await generateNarrative(miniSummary);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "";
-      if (msg.includes("quota exceeded") || msg.includes("AI quota exceeded")) {
-        narrative = {
-          summary:
-            "AI quota reached for today. Try again tomorrow or the app will use cached results if available. Below is a machine-categorized view of this release.",
-          highlight: {
-            title: "Categorized changes",
-            description:
-              "Commits are grouped by conventional patterns; no AI summary was generated.",
-          },
-        };
-      } else {
-        throw e;
+    const noCommitsInRange =
+      compared.commits.length === 0 || compared.stats.totalCommits === 0;
+
+    let narrative: GeminiNarrative;
+    if (noCommitsInRange) {
+      narrative = {
+        summary:
+          "No commits were found between these tags. Put the older release in \"From\" and the newer in \"To\" (example: v19.2.3 → v19.2.4). If your tags were reversed, swap them and generate again.",
+        highlight: {
+          title: "Empty range",
+          description:
+            "Wrong tag order is the usual cause—older release first, newer second.",
+        },
+      };
+    } else {
+      try {
+        narrative = await generateNarrative(miniSummary);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "";
+        if (msg.includes("quota exceeded") || msg.includes("AI quota exceeded")) {
+          narrative = {
+            summary:
+              "AI quota reached for today. Try again tomorrow or the app will use cached results if available. Below is a machine-categorized view of this release.",
+            highlight: {
+              title: "Categorized changes",
+              description:
+                "Commits are grouped by conventional patterns; no AI summary was generated.",
+            },
+          };
+        } else {
+          throw e;
+        }
       }
     }
 
