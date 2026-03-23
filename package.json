@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:safe": "node scripts/build-safe.mjs",
     "start": "next start",
+    "start:safe": "node scripts/start-safe.mjs",
     "lint": "next lint"
   },
   "dependencies": {

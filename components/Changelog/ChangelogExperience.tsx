@@ -5,9 +5,11 @@ import { useEffect, useState } from "react";
 import { sessionPayloadKey } from "@/lib/parseRepo";
 import type { CachedChangelogPayload } from "@/lib/types";
 import { encodeTagRange } from "@/lib/range";
+import { CategoryJumpNav } from "@/components/Changelog/CategoryJumpNav";
 import { CategorySection } from "@/components/Changelog/CategorySection";
 import { ChangelogHeader } from "@/components/Changelog/ChangelogHeader";
 import { HighlightCard } from "@/components/Changelog/HighlightCard";
+import { ScrollToTop } from "@/components/Changelog/ScrollToTop";
 import { ShareBar } from "@/components/Changelog/ShareBar";
 import { StatsBar } from "@/components/Changelog/StatsBar";
 import { FullPageError } from "@/components/UI/FullPageError";
@@ -128,12 +130,14 @@ export function ChangelogExperience({
           title={changelog.highlight.title}
           description={changelog.highlight.description}
         />
+        <CategoryJumpNav categories={changelog.categories} />
         <CategorySection
           categories={changelog.categories}
           owner={owner}
           repo={repo}
         />
       </motion.main>
+      <ScrollToTop />
       <ShareBar sharePath={sharePath} />
     </div>
   );
