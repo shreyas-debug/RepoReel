@@ -45,7 +45,7 @@ export function ChangeCard({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay: index * 0.04 }}
-      className={`rounded-xl border border-white/10 border-l-4 ${border[variant]} bg-white/[0.03] p-4`}
+      className={`w-full max-w-full rounded-xl border border-white/10 border-l-4 ${border[variant]} bg-white/[0.03] p-3 sm:p-4`}
     >
       <div className="flex flex-wrap items-center gap-2">
         <Badge variant={variantMap[variant]} />

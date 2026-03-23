@@ -1,7 +1,6 @@
 "use client";
 
 import { motion } from "framer-motion";
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { sessionPayloadKey } from "@/lib/parseRepo";
 import type { CachedChangelogPayload } from "@/lib/types";
@@ -11,6 +10,7 @@ import { ChangelogHeader } from "@/components/Changelog/ChangelogHeader";
 import { HighlightCard } from "@/components/Changelog/HighlightCard";
 import { ShareBar } from "@/components/Changelog/ShareBar";
 import { StatsBar } from "@/components/Changelog/StatsBar";
+import { FullPageError } from "@/components/UI/FullPageError";
 
 export function ChangelogExperience({
   owner,
@@ -43,21 +43,11 @@ export function ChangelogExperience({
 
   if (!payload) {
     return (
-      <div className="mx-auto flex min-h-screen max-w-lg flex-col items-center justify-center px-4 text-center">
-        <p className="font-display text-2xl font-semibold text-foreground">
-          No changelog here yet
-        </p>
-        <p className="mt-3 text-muted">
-          Generate one from the home page, or this link may have expired from
-          cache.
-        </p>
-        <Link
-          href="/"
-          className="mt-8 rounded-xl bg-indigo-brand px-5 py-3 font-medium text-white"
-        >
-          Back to home
-        </Link>
-      </div>
+      <FullPageError
+        title="Changelog not available"
+        description="Open this link right after generating from the home page, or the cache may have expired. Generate again and try the share link."
+        actionLabel="Try another repo"
+      />
     );
   }
 
@@ -65,19 +55,36 @@ export function ChangelogExperience({
   const rangeSeg = encodeTagRange(from, to);
   const sharePath = `/r/${owner}/${repo}/${rangeSeg}`;
 
+  const totalItems =
+    changelog.categories.features.length +
+    changelog.categories.bugFixes.length +
+    changelog.categories.breakingChanges.length +
+    changelog.categories.performance.length +
+    changelog.categories.devExperience.length;
+
+  if (changelog.stats.commits === 0 && totalItems === 0) {
+    return (
+      <FullPageError
+        title="No changes found between these versions"
+        description="GitHub returned no commits in this range. Use the older tag as “From” and the newer as “To”, then generate again."
+        actionLabel="Try another repo"
+      />
+    );
+  }
+
   return (
-    <div className="pb-24">
+    <div className="pb-28 sm:pb-24">
       <motion.main
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="mx-auto max-w-3xl space-y-10 px-4 py-12 sm:px-6"
+        className="mx-auto max-w-3xl space-y-8 px-3 py-8 sm:space-y-10 sm:px-6 sm:py-12"
       >
         <ChangelogHeader owner={owner} repo={repo} from={from} to={to} />
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.15 }}
-          className="text-lg leading-relaxed text-muted"
+          className="text-base leading-relaxed text-muted sm:text-lg"
         >
           {changelog.summary}
         </motion.p>

@@ -122,6 +122,11 @@ export async function compareVersions(
   } catch (err: unknown) {
     const status = (err as { status?: number }).status;
     const message = (err as Error).message ?? "";
+    if (status === 403) {
+      throw new Error(
+        "GitHub API rate limit or forbidden. Set GITHUB_TOKEN for higher limits.",
+      );
+    }
     if (status === 404) {
       throw new Error(
         `Could not compare ${base}...${head}. Check that both tags or refs exist.`,

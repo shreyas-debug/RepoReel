@@ -16,6 +16,7 @@ import type {
   GenerateRequest,
 } from "@/lib/types";
 import type { GeminiNarrative } from "@/lib/gemini";
+import { ApiErrorCode } from "@/lib/api-errors";
 
 function isGenerateRequest(body: unknown): body is GenerateRequest {
   if (!body || typeof body !== "object") return false;
@@ -76,93 +77,120 @@ export async function POST(request: Request) {
 
   const { owner, repo, from, to } = json;
 
+  let compared;
   try {
-    const compared = await compareVersions(owner, repo, from, to);
+    compared = await compareVersions(owner, repo, from, to);
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Compare failed";
+    const httpStatus = (e as { status?: number }).status;
+    if (httpStatus === 403 || message.toLowerCase().includes("rate limit")) {
+      return NextResponse.json(
+        {
+          error:
+            "GitHub rate limit reached. Try adding a GITHUB_TOKEN to your environment.",
+          code: ApiErrorCode.GITHUB_RATE_LIMIT,
+        },
+        { status: 403 },
+      );
+    }
+    if (
+      httpStatus === 404 ||
+      message.includes("Could not compare") ||
+      message.includes("not found")
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "This repo is private or doesn't exist, or tags are invalid. RepoReel only supports public repos.",
+          code: ApiErrorCode.REPO_NOT_FOUND,
+        },
+        { status: 404 },
+      );
+    }
+    throw e;
+  }
 
-    const stats = {
-      commits: compared.stats.totalCommits,
-      contributors: compared.contributorLogins.length,
-      filesChanged: compared.stats.filesChanged,
-    };
+  const stats = {
+    commits: compared.stats.totalCommits,
+    contributors: compared.contributorLogins.length,
+    filesChanged: compared.stats.filesChanged,
+  };
 
-    const messageLines = compared.commits.map((c) => firstLine(c.message));
-    const reverts = extractRevertCommits(messageLines);
-    const filtered = filterNoise(messageLines);
-    const parsed = categorizeCommits(filtered);
-    parsed.breakingChanges = [...reverts, ...parsed.breakingChanges];
-    const merged = mergeOtherIntoDevExperience(parsed);
-    const miniSummary = buildMiniSummary(merged, stats);
+  const messageLines = compared.commits.map((c) => firstLine(c.message));
+  const reverts = extractRevertCommits(messageLines);
+  const filtered = filterNoise(messageLines);
+  const parsed = categorizeCommits(filtered);
+  parsed.breakingChanges = [...reverts, ...parsed.breakingChanges];
+  const merged = mergeOtherIntoDevExperience(parsed);
+  const miniSummary = buildMiniSummary(merged, stats);
 
-    const noCommitsInRange =
-      compared.commits.length === 0 || compared.stats.totalCommits === 0;
+  const noCommitsInRange =
+    compared.commits.length === 0 || compared.stats.totalCommits === 0;
 
-    let narrative: GeminiNarrative;
-    if (noCommitsInRange) {
+  if (noCommitsInRange) {
+    return NextResponse.json(
+      {
+        error:
+          "No changes found between these versions. Use the older tag as \"From\" and the newer as \"To\" (e.g. v18.2.0 → v18.3.0).",
+        code: ApiErrorCode.NO_COMMITS,
+      },
+      { status: 422 },
+    );
+  }
+
+  let narrative: GeminiNarrative;
+  try {
+    narrative = await generateNarrative(miniSummary);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "";
+    if (msg.includes("quota exceeded") || msg.includes("AI quota exceeded")) {
       narrative = {
         summary:
-          "No commits were found between these tags. Put the older release in \"From\" and the newer in \"To\" (example: v19.2.3 → v19.2.4). If your tags were reversed, swap them and generate again.",
+          "AI quota reached for today. Try again tomorrow or the app will use cached results if available. Below is a machine-categorized view of this release.",
         highlight: {
-          title: "Empty range",
+          title: "Categorized changes",
           description:
-            "Wrong tag order is the usual cause—older release first, newer second.",
+            "Commits are grouped by conventional patterns; no AI summary was generated.",
         },
       };
     } else {
-      try {
-        narrative = await generateNarrative(miniSummary);
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : "";
-        if (msg.includes("quota exceeded") || msg.includes("AI quota exceeded")) {
-          narrative = {
-            summary:
-              "AI quota reached for today. Try again tomorrow or the app will use cached results if available. Below is a machine-categorized view of this release.",
-            highlight: {
-              title: "Categorized changes",
-              description:
-                "Commits are grouped by conventional patterns; no AI summary was generated.",
-            },
-          };
-        } else {
-          throw e;
-        }
-      }
+      return NextResponse.json(
+        {
+          error: "AI generation failed, please try again.",
+          code: ApiErrorCode.GEMINI_FAILED,
+        },
+        { status: 503 },
+      );
     }
-
-    const changelog: ChangelogResponse = {
-      summary: narrative.summary,
-      stats: {
-        commits: stats.commits,
-        contributors: stats.contributors,
-        filesChanged: stats.filesChanged,
-      },
-      highlight: narrative.highlight,
-      categories: {
-        features: toItems(merged.features),
-        bugFixes: toItems(merged.bugFixes),
-        breakingChanges: toItems(merged.breakingChanges),
-        performance: toItems(merged.performance),
-        devExperience: toItems(merged.devExperience),
-      },
-    };
-
-    const payload: CachedChangelogPayload = {
-      changelog,
-      owner,
-      repo,
-      from,
-      to,
-      generatedAt: new Date().toISOString(),
-    };
-
-    await setCachedChangelog(owner, repo, from, to, payload);
-
-    return NextResponse.json({ ok: true, data: payload });
-  } catch (e) {
-    const message = e instanceof Error ? e.message : "Generation failed";
-    const status =
-      message.includes("GEMINI_API_KEY") || message.includes("not configured")
-        ? 503
-        : 500;
-    return NextResponse.json({ error: message }, { status });
   }
+
+  const changelog: ChangelogResponse = {
+    summary: narrative.summary,
+    stats: {
+      commits: stats.commits,
+      contributors: stats.contributors,
+      filesChanged: stats.filesChanged,
+    },
+    highlight: narrative.highlight,
+    categories: {
+      features: toItems(merged.features),
+      bugFixes: toItems(merged.bugFixes),
+      breakingChanges: toItems(merged.breakingChanges),
+      performance: toItems(merged.performance),
+      devExperience: toItems(merged.devExperience),
+    },
+  };
+
+  const payload: CachedChangelogPayload = {
+    changelog,
+    owner,
+    repo,
+    from,
+    to,
+    generatedAt: new Date().toISOString(),
+  };
+
+  await setCachedChangelog(owner, repo, from, to, payload);
+
+  return NextResponse.json({ ok: true, data: payload });
 }

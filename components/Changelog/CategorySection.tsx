@@ -28,7 +28,7 @@ export function CategorySection({
   repo: string;
 }) {
   return (
-    <div className="space-y-12">
+    <div className="w-full space-y-8 sm:space-y-12">
       {config.map(({ key, title, variant }) => {
         const items: ChangelogItem[] = categories[key];
         if (!items.length) return null;
@@ -39,11 +39,12 @@ export function CategorySection({
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-40px" }}
             transition={{ duration: 0.4 }}
+            className="w-full"
           >
-            <h2 className="font-display text-2xl font-semibold text-foreground">
+            <h2 className="font-display text-xl font-semibold text-foreground sm:text-2xl">
               {title}
             </h2>
-            <div className="mt-4 grid gap-3">
+            <div className="mt-3 grid w-full gap-2 sm:mt-4 sm:gap-3">
               {items.map((item, i) => (
                 <ChangeCard
                   key={`${key}-${item.title}-${i}`}

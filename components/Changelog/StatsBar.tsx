@@ -25,7 +25,7 @@ function Stat({
   }, [value, delay]);
 
   return (
-    <div className="flex flex-col items-center gap-1 sm:items-start">
+    <div className="flex flex-col items-center gap-1 border-b border-white/10 py-4 last:border-b-0 sm:items-start sm:border-b-0 sm:py-0">
       <span className="font-display text-3xl font-bold tabular-nums text-foreground sm:text-4xl">
         {n.toLocaleString()}
       </span>
@@ -44,7 +44,7 @@ export function StatsBar({
   filesChanged: number;
 }) {
   return (
-    <div className="grid grid-cols-3 gap-6 border-y border-white/10 py-8">
+    <div className="grid grid-cols-1 gap-0 border-y border-white/10 py-2 sm:grid-cols-3 sm:gap-6 sm:py-8">
       <Stat label="Commits" value={commits} delay={0} />
       <Stat label="Contributors" value={contributors} delay={0.08} />
       <Stat label="Files changed" value={filesChanged} delay={0.16} />
