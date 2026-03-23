@@ -4,6 +4,8 @@ import { generateNarrative } from "@/lib/gemini";
 import {
   buildMiniSummary,
   categorizeCommits,
+  extractRevertCommits,
+  filterNoise,
   type ParsedCategories,
 } from "@/lib/parser";
 import { setCachedChangelog } from "@/lib/cache";
@@ -83,7 +85,10 @@ export async function POST(request: Request) {
     };
 
     const messageLines = compared.commits.map((c) => firstLine(c.message));
-    const parsed = categorizeCommits(messageLines);
+    const reverts = extractRevertCommits(messageLines);
+    const filtered = filterNoise(messageLines);
+    const parsed = categorizeCommits(filtered);
+    parsed.breakingChanges = [...reverts, ...parsed.breakingChanges];
     const merged = mergeOtherIntoDevExperience(parsed);
     const miniSummary = buildMiniSummary(merged, stats);
 

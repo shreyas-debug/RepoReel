@@ -7,6 +7,39 @@ export interface ParsedCategories {
   other: string[];
 }
 
+/** True when the line is only a semver-like version (e.g. 18.3.0, v2.0.0-rc.1). */
+function isVersionOnlyLine(msg: string): boolean {
+  const t = msg.trim();
+  if (!t) return false;
+  return /^v?\d+\.\d+(\.\d+)?(-[\w.-]+)?(\+[\w.-]+)?$/i.test(t);
+}
+
+/**
+ * Drops noisy commits before categorization. Also removes revert lines here —
+ * use {@link extractRevertCommits} on the same input and merge those into
+ * `breakingChanges` in the caller.
+ */
+export function filterNoise(commits: string[]): string[] {
+  const out: string[] = [];
+  for (const msg of commits) {
+    const clean = msg.toLowerCase().trim();
+    if (clean.startsWith("bump version")) continue;
+    if (clean.startsWith("backport")) continue;
+    if (clean.startsWith("merge")) continue;
+    if (clean.startsWith("revert")) continue;
+    if (isVersionOnlyLine(msg)) continue;
+    out.push(msg);
+  }
+  return out;
+}
+
+/** Commit first lines that are revert commits (for breakingChanges). */
+export function extractRevertCommits(commits: string[]): string[] {
+  return commits.filter((msg) =>
+    msg.toLowerCase().trim().startsWith("revert"),
+  );
+}
+
 export function categorizeCommits(commits: string[]): ParsedCategories {
   const categories: ParsedCategories = {
     features: [],
