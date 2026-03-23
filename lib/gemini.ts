@@ -171,8 +171,10 @@ export async function generateChangelog(
   }
 
   const genAI = new GoogleGenerativeAI(apiKey);
+  const modelName =
+    process.env.GEMINI_MODEL?.trim() || "gemini-2.0-flash";
   const model = genAI.getGenerativeModel({
-    model: "gemini-1.5-flash",
+    model: modelName,
     systemInstruction: SYSTEM_PROMPT,
   });
 
@@ -189,7 +191,7 @@ export async function generateChangelog(
     return await runOnce();
   } catch {
     const retryModel = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
+      model: modelName,
       systemInstruction: `${SYSTEM_PROMPT}
 
 CRITICAL: Your previous output was invalid. Reply with ONLY a single JSON object. No prose.`,
