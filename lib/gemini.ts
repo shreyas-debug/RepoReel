@@ -1,8 +1,11 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
+/** Tried in order; earlier entries are cheaper. 404/unsupported skips to next. */
 const MODEL_FALLBACK_CHAIN = [
   "gemini-2.0-flash-lite",
   "gemini-2.0-flash",
+  "gemini-2.5-flash-lite",
+  "gemini-2.5-flash",
   "gemini-1.5-flash-8b",
 ];
 
@@ -34,19 +37,45 @@ function parseNarrativeJson(text: string): GeminiNarrative {
   return { summary, highlight: { title, description } };
 }
 
+function errorText(err: unknown): string {
+  if (err instanceof Error) {
+    const cause = (err as Error & { cause?: unknown }).cause;
+    return `${err.message}${cause != null ? ` ${String(cause)}` : ""}`;
+  }
+  return String(err);
+}
+
+/** True only for real quota / rate-limit signals (avoid "rate" substring false positives). */
 function isQuotaError(err: unknown): boolean {
-  const msg =
-    err instanceof Error
-      ? err.message
-      : typeof err === "string"
-        ? err
-        : "";
+  const raw = errorText(err);
+  const msg = raw.toLowerCase();
   return (
     msg.includes("429") ||
+    msg.includes("resource_exhausted") ||
+    msg.includes("resource exhausted") ||
     msg.includes("quota") ||
-    msg.includes("rate") ||
-    msg.includes("RESOURCE_EXHAUSTED")
+    msg.includes("rate limit") ||
+    msg.includes("ratelimit") ||
+    msg.includes("too many requests") ||
+    /\b429\b/.test(raw)
   );
+}
+
+function shouldRetryWithNextModel(err: unknown): boolean {
+  const msg = errorText(err).toLowerCase();
+  if (isQuotaError(err)) return true;
+  if (err instanceof SyntaxError) return true;
+  if (msg.includes("invalid narrative") || msg.includes("missing summary")) {
+    return true;
+  }
+  if (msg.includes("json")) return true;
+  if (msg.includes("404")) return true;
+  if (msg.includes("empty response")) return true;
+  if (msg.includes("not found")) return true;
+  if (msg.includes("not supported")) return true;
+  if (msg.includes("does not exist")) return true;
+  if (msg.includes("was not found")) return true;
+  return false;
 }
 
 export async function generateNarrative(
@@ -86,20 +115,12 @@ Return ONLY valid JSON with no markdown, no backticks, no explanation:
       if (!text) throw new Error("Empty response from Gemini");
       return parseNarrativeJson(text);
     } catch (err: unknown) {
-      if (isQuotaError(err)) {
-        lastError = err instanceof Error ? err : new Error(String(err));
+      const asErr = err instanceof Error ? err : new Error(errorText(err));
+      lastError = asErr;
+      if (shouldRetryWithNextModel(err)) {
         continue;
       }
-      if (err instanceof SyntaxError) {
-        lastError = err;
-        continue;
-      }
-      const msg = err instanceof Error ? err.message : String(err);
-      if (msg.includes("JSON") || msg.includes("Invalid narrative")) {
-        lastError = err instanceof Error ? err : new Error(msg);
-        continue;
-      }
-      throw err;
+      throw asErr;
     }
   }
 
@@ -109,7 +130,9 @@ Return ONLY valid JSON with no markdown, no backticks, no explanation:
         "AI quota exceeded across all models. Please try again tomorrow or add billing to your Google AI account at aistudio.google.com.",
       );
     }
-    throw lastError;
+    throw new Error(
+      `AI generation failed after trying ${MODEL_FALLBACK_CHAIN.length} models: ${lastError.message}`,
+    );
   }
 
   throw new Error("AI generation failed");
