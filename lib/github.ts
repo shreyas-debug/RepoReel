@@ -6,8 +6,10 @@ import type {
 } from "@/lib/types";
 
 function createClient(): Octokit {
-  const token = process.env.GITHUB_TOKEN;
-  return new Octokit({ auth: token || undefined });
+  return new Octokit({
+    // Unauthenticated public API (60 req/h); set GITHUB_TOKEN for 5000/h
+    auth: process.env.GITHUB_TOKEN || undefined,
+  });
 }
 
 function mapCommit(
