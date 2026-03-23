@@ -1,6 +1,7 @@
 import { ChangelogExperience } from "@/components/Changelog/ChangelogExperience";
 import { buildChangelogPayload } from "@/lib/build-changelog";
 import { getCachedChangelog } from "@/lib/cache";
+import { attachCommitHeatmapIfMissing } from "@/lib/repair-timeline";
 import { ApiErrorCode, type ApiErrorCodeType } from "@/lib/api-errors";
 import { buildOgImageUrl } from "@/lib/og-url";
 import { decodeTagRange } from "@/lib/range";
@@ -138,16 +139,20 @@ export default async function ChangelogPage({
     } else {
       loadError = loadErrorView(result.code, result.message);
     }
+  } else {
+    initial = await attachCommitHeatmapIfMissing(owner, repo, from, to, initial);
   }
 
   return (
-    <ChangelogExperience
-      owner={owner}
-      repo={repo}
-      from={from}
-      to={to}
-      initial={initial}
-      loadError={loadError}
-    />
+    <div className="min-h-screen bg-[#0A0F1E]">
+      <ChangelogExperience
+        owner={owner}
+        repo={repo}
+        from={from}
+        to={to}
+        initial={initial}
+        loadError={loadError}
+      />
+    </div>
   );
 }

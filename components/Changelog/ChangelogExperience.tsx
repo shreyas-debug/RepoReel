@@ -3,15 +3,16 @@
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { sessionPayloadKey } from "@/lib/parseRepo";
-import type { CachedChangelogPayload } from "@/lib/types";
+import type { CachedChangelogPayload, HeatmapWeekRow } from "@/lib/types";
 import { encodeTagRange } from "@/lib/range";
 import { CategoryJumpNav } from "@/components/Changelog/CategoryJumpNav";
 import { CategorySection } from "@/components/Changelog/CategorySection";
+import { ChangelogSidebar } from "@/components/Changelog/ChangelogSidebar";
+import { CommitHeatmap } from "@/components/Changelog/CommitHeatmap";
 import { ChangelogHeader } from "@/components/Changelog/ChangelogHeader";
-import { HighlightCard } from "@/components/Changelog/HighlightCard";
 import { ScrollToTop } from "@/components/Changelog/ScrollToTop";
-import { ShareBar } from "@/components/Changelog/ShareBar";
-import { StatsBar } from "@/components/Changelog/StatsBar";
+import { ShareButtons } from "@/components/Changelog/ShareButtons";
+import { StatsBarMobile } from "@/components/Changelog/StatsBar";
 import { FullPageError } from "@/components/UI/FullPageError";
 
 type LoadErrorView = {
@@ -56,6 +57,25 @@ export function ChangelogExperience({
     }
   }, [owner, repo, from, to, payload, loadError]);
 
+  /** Old sessionStorage without `commitHeatmap` — fetch grid from API */
+  useEffect(() => {
+    if (!payload || loadError) return;
+    if (payload.commitHeatmap && payload.commitHeatmap.length > 0) return;
+    if (payload.changelog.stats.commits === 0) return;
+    let cancelled = false;
+    const q = new URLSearchParams({ owner, repo, from, to });
+    fetch(`/api/commit-heatmap?${q}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { commitHeatmap?: HeatmapWeekRow[] } | null) => {
+        if (cancelled || !data?.commitHeatmap?.length) return;
+        setPayload((p) => (p ? { ...p, commitHeatmap: data.commitHeatmap } : p));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [owner, repo, from, to, loadError, payload]);
+
   if (loadError) {
     return (
       <FullPageError
@@ -85,6 +105,7 @@ export function ChangelogExperience({
   }
 
   const { changelog } = payload;
+  const commitHeatmap = payload.commitHeatmap ?? [];
   const rangeSeg = encodeTagRange(from, to);
   const sharePath = `/r/${owner}/${repo}/${rangeSeg}`;
 
@@ -106,39 +127,69 @@ export function ChangelogExperience({
   }
 
   return (
-    <div className="pb-28 sm:pb-24">
-      <motion.main
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="mx-auto max-w-3xl space-y-8 px-3 py-8 sm:space-y-10 sm:px-6 sm:py-12"
-      >
-        <ChangelogHeader owner={owner} repo={repo} from={from} to={to} />
-        <motion.p
+    <div className="relative pb-16">
+      <div className="pointer-events-none fixed inset-0 z-0">
+        <div className="absolute right-0 top-0 h-[600px] w-[600px] rounded-full bg-indigo-600/5 blur-[120px]" />
+        <div className="absolute bottom-0 left-0 h-[400px] w-[400px] rounded-full bg-purple-600/5 blur-[100px]" />
+      </div>
+      <div className="relative z-10">
+        <motion.header
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.15 }}
-          className="text-base leading-relaxed text-muted sm:text-lg"
+          className="mx-auto max-w-6xl px-6 py-10"
         >
-          {changelog.summary}
-        </motion.p>
-        <StatsBar
-          commits={changelog.stats.commits}
-          contributors={changelog.stats.contributors}
-          filesChanged={changelog.stats.filesChanged}
-        />
-        <HighlightCard
-          title={changelog.highlight.title}
-          description={changelog.highlight.description}
-        />
-        <CategoryJumpNav categories={changelog.categories} />
-        <CategorySection
-          categories={changelog.categories}
-          owner={owner}
-          repo={repo}
-        />
-      </motion.main>
-      <ScrollToTop />
-      <ShareBar sharePath={sharePath} />
+          <ChangelogHeader owner={owner} repo={repo} from={from} to={to} />
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.15 }}
+            className="mt-6 text-base leading-relaxed text-muted sm:text-lg"
+          >
+            {changelog.summary}
+          </motion.p>
+          <p className="mt-4 text-sm">
+            <span className="inline rounded-md border border-amber-400/30 bg-amber-400/15 px-3 py-1.5 text-amber-200">
+              ⭐ {changelog.highlight.title} — {changelog.highlight.description}
+            </span>
+          </p>
+        </motion.header>
+
+        <div className="mx-auto flex max-w-6xl flex-col items-start gap-10 px-6 pb-20 lg:flex-row lg:gap-10">
+          <ChangelogSidebar
+            categories={changelog.categories}
+            commits={changelog.stats.commits}
+            contributors={changelog.stats.contributors}
+            filesChanged={changelog.stats.filesChanged}
+            sharePath={sharePath}
+          />
+
+          <motion.main
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.05 }}
+            className="min-w-0 flex-1 space-y-10"
+          >
+            <div className="space-y-6 lg:hidden">
+              <StatsBarMobile
+                commits={changelog.stats.commits}
+                contributors={changelog.stats.contributors}
+                filesChanged={changelog.stats.filesChanged}
+              />
+              <CategoryJumpNav categories={changelog.categories} />
+              <ShareButtons sharePath={sharePath} />
+            </div>
+
+            <CommitHeatmap commitHeatmap={commitHeatmap} />
+            <CategorySection
+              categories={changelog.categories}
+              owner={owner}
+              repo={repo}
+            />
+          </motion.main>
+        </div>
+
+        <ScrollToTop />
+      </div>
     </div>
   );
 }

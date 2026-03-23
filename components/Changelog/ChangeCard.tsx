@@ -14,12 +14,26 @@ const variantMap = {
 
 type Variant = keyof typeof variantMap;
 
-const border: Record<Variant, string> = {
-  feature: "border-l-cat-feature",
-  fix: "border-l-cat-fix",
-  breaking: "border-l-cat-breaking",
-  perf: "border-l-cat-perf",
-  dx: "border-l-cat-dx",
+/** Category-specific surface + top accent */
+const cardSurface: Record<Variant, string> = {
+  feature:
+    "border border-white/10 border-t-[3px] border-t-indigo-500 bg-white/[0.04]",
+  fix:
+    "border border-white/10 border-t-[3px] border-t-emerald-500 bg-white/[0.04]",
+  breaking:
+    "border border-red-800/30 border-t-[3px] border-t-red-500 bg-red-950/20",
+  perf:
+    "border border-amber-800/30 border-t-[3px] border-t-amber-500 bg-amber-950/20",
+  dx: "border border-white/10 border-t-[3px] border-t-violet-500 bg-white/[0.04]",
+};
+
+/** Stronger left edge (category color) */
+const leftAccent: Record<Variant, string> = {
+  feature: "border-l-[3px] border-l-indigo-500",
+  fix: "border-l-[3px] border-l-emerald-500",
+  breaking: "border-l-[3px] border-l-red-500",
+  perf: "border-l-[3px] border-l-amber-500",
+  dx: "border-l-[3px] border-l-violet-500",
 };
 
 export function ChangeCard({
@@ -45,23 +59,27 @@ export function ChangeCard({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay: index * 0.04 }}
-      className={`w-full max-w-full rounded-xl border border-white/10 border-l-4 ${border[variant]} bg-white/[0.03] p-3 sm:p-4`}
+      className={`group w-full max-w-full rounded-xl p-5 pl-4 transition-colors duration-150 hover:border-white/20 hover:bg-white/5 ${cardSurface[variant]} ${leftAccent[variant]}`}
     >
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge variant={variantMap[variant]} />
-        {prUrl ? (
-          <a
-            href={prUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-mono text-xs text-indigo-brand hover:underline"
-          >
-            #{item.prNumber}
-          </a>
-        ) : null}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+        <h3 className="min-w-0 flex-1 text-base font-semibold leading-snug text-foreground sm:text-lg">
+          {item.title}
+        </h3>
+        <div className="flex shrink-0 items-center justify-end gap-2 sm:pt-0.5">
+          <Badge variant={variantMap[variant]} />
+          {prUrl ? (
+            <a
+              href={prUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-mono text-xs font-medium text-indigo-brand transition-colors hover:text-indigo-400 hover:underline"
+            >
+              #{item.prNumber}
+            </a>
+          ) : null}
+        </div>
       </div>
-      <h3 className="mt-2 font-medium text-foreground">{item.title}</h3>
-      <p className="mt-1 line-clamp-3 text-sm leading-relaxed text-muted">
+      <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-muted">
         {item.description}
       </p>
     </motion.article>

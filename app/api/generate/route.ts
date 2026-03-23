@@ -52,5 +52,6 @@ export async function POST(request: Request) {
     );
   }
 
+  // `data` is CachedChangelogPayload: changelog + stats + `commitHeatmap` (daily grid)
   return NextResponse.json({ ok: true, data: result.payload });
 }

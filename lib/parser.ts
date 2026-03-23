@@ -8,7 +8,7 @@ export interface ParsedCategories {
 }
 
 /** True when the line is only a semver-like version (e.g. 18.3.0, v2.0.0-rc.1). */
-function isVersionOnlyLine(msg: string): boolean {
+export function isVersionOnlyLine(msg: string): boolean {
   const t = msg.trim();
   if (!t) return false;
   return /^v?\d+\.\d+(\.\d+)?(-[\w.-]+)?(\+[\w.-]+)?$/i.test(t);

@@ -9,6 +9,7 @@ import {
   type ParsedCategories,
 } from "@/lib/parser";
 import { setCachedChangelog } from "@/lib/cache";
+import { buildCommitHeatmap } from "@/lib/commit-heatmap";
 import type {
   CachedChangelogPayload,
   ChangelogItem,
@@ -162,8 +163,11 @@ export async function buildChangelogPayload(
     },
   };
 
+  const commitHeatmap = buildCommitHeatmap(compared.commits);
+
   const payload: CachedChangelogPayload = {
     changelog,
+    commitHeatmap,
     owner,
     repo,
     from,

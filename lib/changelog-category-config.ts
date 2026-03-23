@@ -1,12 +1,12 @@
 import type { ChangelogCategories } from "@/lib/types";
 
-/** DOM ids for anchor links (`#changelog-features`, etc.) */
+/** DOM ids for anchor links (`#section-features`, etc.) */
 export const CHANGELOG_SECTION_ID: Record<keyof ChangelogCategories, string> = {
-  features: "changelog-features",
-  bugFixes: "changelog-bug-fixes",
-  breakingChanges: "changelog-breaking",
-  performance: "changelog-performance",
-  devExperience: "changelog-dev-experience",
+  features: "section-features",
+  bugFixes: "section-bugfixes",
+  breakingChanges: "section-breaking",
+  performance: "section-performance",
+  devExperience: "section-devexperience",
 };
 
 export const CATEGORY_ORDER: {

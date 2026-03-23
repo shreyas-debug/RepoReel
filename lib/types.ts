@@ -66,9 +66,25 @@ export interface CompareVersionsResult {
   contributorLogins: string[];
 }
 
+/** One day in the contribution heatmap (null dateKey = alignment padding). */
+export interface HeatmapCell {
+  dateKey: string | null;
+  count: number;
+}
+
+/** One week column: Mon–Sun cells; month label only on first column of a new month (GitHub-style). */
+export interface HeatmapWeekRow {
+  weekLabel: string;
+  /** Short month ("Jan", "Mar") for top axis; null when same month as previous column. */
+  monthLabel?: string | null;
+  days: HeatmapCell[];
+}
+
 /** Cached payload for shareable URLs */
 export interface CachedChangelogPayload {
   changelog: ChangelogResponse;
+  /** Daily commit counts in a Mon–Sun grid; omitted in older cached payloads. */
+  commitHeatmap?: HeatmapWeekRow[];
   owner: string;
   repo: string;
   from: string;

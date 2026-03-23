@@ -249,23 +249,35 @@ export function HeroSection() {
   return (
     <>
       <LoadingStory open={submitting} />
-      <section className="mx-auto flex max-w-2xl flex-col gap-10 px-4 py-20 sm:px-6">
+      <section className="relative z-10 mx-auto w-full max-w-3xl px-4 pb-16 pt-24 sm:px-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="text-center sm:text-left"
+          className="mx-auto max-w-3xl text-center sm:text-left"
         >
+          <span className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 text-xs text-indigo-400">
+            <span aria-hidden>✦</span>
+            Visual changelogs for developers
+          </span>
           <p className="font-display text-sm font-semibold uppercase tracking-widest text-indigo-brand">
             RepoReel
           </p>
-          <h1 className="mt-3 font-display text-4xl font-bold leading-tight tracking-tight text-foreground sm:text-5xl">
-            Your release, as a story.
+          <h1 className="mt-3 font-display text-5xl font-bold leading-[1.08] tracking-tight md:text-6xl">
+            <span className="bg-gradient-to-br from-white via-white to-slate-400 bg-clip-text text-transparent">
+              Your release, as a story.
+            </span>
           </h1>
           <p className="mt-4 text-lg text-muted">
             Paste a public GitHub repo and pick two tags — get a visual changelog
             you can share.
           </p>
+          <motion.div
+            className="mx-auto mt-4 h-px max-w-[60px] bg-gradient-to-r from-indigo-500 to-transparent sm:mx-0"
+            initial={{ width: 0 }}
+            animate={{ width: 60 }}
+            transition={{ duration: 0.65, delay: 0.35, ease: [0.22, 1, 0.36, 1] }}
+          />
         </motion.div>
 
         <motion.form
@@ -273,8 +285,12 @@ export function HeroSection() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45, delay: 0.1 }}
           onSubmit={onSubmit}
-          className="flex flex-col gap-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6 shadow-xl shadow-black/40"
+          className="relative mx-auto mt-10 flex max-w-2xl flex-col gap-6 overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-6 shadow-[0_0_60px_-20px_rgba(99,102,241,0.3)] backdrop-blur-sm"
         >
+          <div
+            className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent"
+            aria-hidden
+          />
           <label className="flex flex-col gap-1.5 text-sm">
             <span className="text-muted">Repository</span>
             <input
@@ -316,16 +332,16 @@ export function HeroSection() {
           <motion.button
             type="submit"
             disabled={submitting || !owner || tags.length < 2}
-            className="rounded-xl bg-indigo-brand px-5 py-3 font-medium text-white shadow-lg shadow-indigo-brand/25 transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 px-5 py-3 font-medium text-white shadow-lg shadow-indigo-500/30 transition-all duration-200 hover:from-indigo-500 hover:to-indigo-400 hover:shadow-[0_0_20px_rgba(99,102,241,0.4)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:from-indigo-600 disabled:hover:to-indigo-500 disabled:hover:shadow-lg"
             whileTap={{ scale: 0.98 }}
           >
             Generate changelog
           </motion.button>
         </motion.form>
 
-        <div>
-          <p className="mb-3 text-center text-sm text-muted sm:text-left">
-            Try an example
+        <div className="mx-auto mt-12 max-w-3xl">
+          <p className="mb-4 text-center text-sm font-medium uppercase tracking-wider text-slate-500 sm:text-left">
+            Try it with popular repos
           </p>
           <ExampleCard onPick={handleExample} />
         </div>
