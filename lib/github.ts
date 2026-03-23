@@ -115,7 +115,7 @@ export async function compareVersions(
         additions: data.files?.reduce((s, f) => s + (f.additions ?? 0), 0) ?? 0,
         deletions: data.files?.reduce((s, f) => s + (f.deletions ?? 0), 0) ?? 0,
       },
-      contributorLogins: [...contributorLogins],
+      contributorLogins: Array.from(contributorLogins),
     };
   } catch (err: unknown) {
     const status = (err as { status?: number }).status;
@@ -145,7 +145,7 @@ export async function getMergedPRs(
   if (numbers.size === 0) return [];
 
   const results: GitHubPR[] = [];
-  const batch = [...numbers].slice(0, 50);
+  const batch = Array.from(numbers).slice(0, 50);
 
   await Promise.all(
     batch.map(async (number) => {
