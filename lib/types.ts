@@ -19,7 +19,7 @@ export interface GitHubPR {
 export interface ChangelogItem {
   title: string;
   description: string;
-  prNumber: number | null;
+  prNumber?: number | null;
 }
 
 export interface ChangelogCategories {

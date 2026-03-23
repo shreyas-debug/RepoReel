@@ -1,8 +1,18 @@
 import { NextResponse } from "next/server";
 import { compareVersions, getMergedPRs } from "@/lib/github";
-import { generateChangelog } from "@/lib/gemini";
+import { generateNarrative } from "@/lib/gemini";
+import {
+  buildMiniSummary,
+  categorizeCommits,
+  type ParsedCategories,
+} from "@/lib/parser";
 import { setCachedChangelog } from "@/lib/cache";
-import type { CachedChangelogPayload, GenerateRequest } from "@/lib/types";
+import type {
+  CachedChangelogPayload,
+  ChangelogItem,
+  ChangelogResponse,
+  GenerateRequest,
+} from "@/lib/types";
 
 function isGenerateRequest(body: unknown): body is GenerateRequest {
   if (!body || typeof body !== "object") return false;
@@ -17,6 +27,33 @@ function isGenerateRequest(body: unknown): body is GenerateRequest {
     o.from.length > 0 &&
     o.to.length > 0
   );
+}
+
+function firstLine(message: string): string {
+  return message.split("\n")[0]?.trim() ?? "";
+}
+
+function prFromMessage(msg: string): number | null {
+  const m = msg.match(/#(\d+)/);
+  if (!m) return null;
+  const n = Number.parseInt(m[1], 10);
+  return Number.isNaN(n) ? null : n;
+}
+
+function toItems(lines: string[]): ChangelogItem[] {
+  return lines.map((msg) => ({
+    title: msg,
+    description: "",
+    prNumber: prFromMessage(msg),
+  }));
+}
+
+function mergeOtherIntoDevExperience(parsed: ParsedCategories): ParsedCategories {
+  return {
+    ...parsed,
+    devExperience: [...parsed.devExperience, ...parsed.other],
+    other: [],
+  };
 }
 
 export async function POST(request: Request) {
@@ -38,7 +75,7 @@ export async function POST(request: Request) {
 
   try {
     const compared = await compareVersions(owner, repo, from, to);
-    const prs = await getMergedPRs(owner, repo, compared.commits);
+    await getMergedPRs(owner, repo, compared.commits);
 
     const stats = {
       commits: compared.stats.totalCommits,
@@ -46,8 +83,47 @@ export async function POST(request: Request) {
       filesChanged: compared.stats.filesChanged,
     };
 
-    const changelog = await generateChangelog(compared.commits, prs, stats);
-    changelog.stats = stats;
+    const messageLines = compared.commits.map((c) => firstLine(c.message));
+    const parsed = categorizeCommits(messageLines);
+    const merged = mergeOtherIntoDevExperience(parsed);
+    const miniSummary = buildMiniSummary(merged, stats);
+
+    let narrative;
+    try {
+      narrative = await generateNarrative(miniSummary);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "";
+      if (msg.includes("quota exceeded") || msg.includes("AI quota exceeded")) {
+        narrative = {
+          summary:
+            "AI quota reached for today. Try again tomorrow or the app will use cached results if available. Below is a machine-categorized view of this release.",
+          highlight: {
+            title: "Categorized changes",
+            description:
+              "Commits are grouped by conventional patterns; no AI summary was generated.",
+          },
+        };
+      } else {
+        throw e;
+      }
+    }
+
+    const changelog: ChangelogResponse = {
+      summary: narrative.summary,
+      stats: {
+        commits: stats.commits,
+        contributors: stats.contributors,
+        filesChanged: stats.filesChanged,
+      },
+      highlight: narrative.highlight,
+      categories: {
+        features: toItems(merged.features),
+        bugFixes: toItems(merged.bugFixes),
+        breakingChanges: toItems(merged.breakingChanges),
+        performance: toItems(merged.performance),
+        devExperience: toItems(merged.devExperience),
+      },
+    };
 
     const payload: CachedChangelogPayload = {
       changelog,
