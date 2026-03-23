@@ -12,23 +12,36 @@ import { ShareBar } from "@/components/Changelog/ShareBar";
 import { StatsBar } from "@/components/Changelog/StatsBar";
 import { FullPageError } from "@/components/UI/FullPageError";
 
+type LoadErrorView = {
+  title: string;
+  description: string;
+  showRetry: boolean;
+};
+
 export function ChangelogExperience({
   owner,
   repo,
   from,
   to,
   initial,
+  loadError,
 }: {
   owner: string;
   repo: string;
   from: string;
   to: string;
   initial: CachedChangelogPayload | null;
+  loadError?: LoadErrorView | null;
 }) {
   const [payload, setPayload] = useState<CachedChangelogPayload | null>(initial);
 
   useEffect(() => {
+    setPayload(initial);
+  }, [initial]);
+
+  useEffect(() => {
     if (payload) return;
+    if (loadError) return;
     try {
       const raw = sessionStorage.getItem(
         sessionPayloadKey(owner, repo, from, to),
@@ -39,13 +52,31 @@ export function ChangelogExperience({
     } catch {
       // ignore
     }
-  }, [owner, repo, from, to, payload]);
+  }, [owner, repo, from, to, payload, loadError]);
+
+  if (loadError) {
+    return (
+      <FullPageError
+        title={loadError.title}
+        description={loadError.description}
+        actionLabel="Try another repo"
+        secondaryLabel={loadError.showRetry ? "Try again" : undefined}
+        onSecondary={
+          loadError.showRetry
+            ? () => {
+                window.location.reload();
+              }
+            : undefined
+        }
+      />
+    );
+  }
 
   if (!payload) {
     return (
       <FullPageError
         title="Changelog not available"
-        description="Open this link right after generating from the home page, or the cache may have expired. Generate again and try the share link."
+        description="If you just generated this changelog, wait a moment and refresh. Otherwise generate again from the home page."
         actionLabel="Try another repo"
       />
     );

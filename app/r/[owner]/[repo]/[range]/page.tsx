@@ -1,7 +1,10 @@
 import { ChangelogExperience } from "@/components/Changelog/ChangelogExperience";
+import { buildChangelogPayload } from "@/lib/build-changelog";
 import { getCachedChangelog } from "@/lib/cache";
+import { ApiErrorCode, type ApiErrorCodeType } from "@/lib/api-errors";
 import { buildOgImageUrl } from "@/lib/og-url";
 import { decodeTagRange } from "@/lib/range";
+import type { CachedChangelogPayload } from "@/lib/types";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
@@ -67,6 +70,48 @@ export async function generateMetadata({
   };
 }
 
+function loadErrorView(
+  code: ApiErrorCodeType,
+  message: string,
+): {
+  title: string;
+  description: string;
+  showRetry: boolean;
+} {
+  switch (code) {
+    case ApiErrorCode.GITHUB_RATE_LIMIT:
+      return {
+        title: "GitHub rate limit reached",
+        description: message,
+        showRetry: false,
+      };
+    case ApiErrorCode.REPO_NOT_FOUND:
+      return {
+        title: "This repo is private or doesn't exist",
+        description: message,
+        showRetry: false,
+      };
+    case ApiErrorCode.NO_COMMITS:
+      return {
+        title: "No changes found between these versions",
+        description: message,
+        showRetry: false,
+      };
+    case ApiErrorCode.GEMINI_FAILED:
+      return {
+        title: "AI generation failed",
+        description: message,
+        showRetry: true,
+      };
+    default:
+      return {
+        title: "Something went wrong",
+        description: message,
+        showRetry: false,
+      };
+  }
+}
+
 export default async function ChangelogPage({
   params,
 }: {
@@ -80,15 +125,29 @@ export default async function ChangelogPage({
     notFound();
   }
 
-  const cached = await getCachedChangelog(params.owner, params.repo, from, to);
+  const { owner, repo } = params;
+
+  let initial: CachedChangelogPayload | null =
+    await getCachedChangelog(owner, repo, from, to);
+  let loadError: ReturnType<typeof loadErrorView> | null = null;
+
+  if (!initial) {
+    const result = await buildChangelogPayload(owner, repo, from, to);
+    if (result.ok) {
+      initial = result.payload;
+    } else {
+      loadError = loadErrorView(result.code, result.message);
+    }
+  }
 
   return (
     <ChangelogExperience
-      owner={params.owner}
-      repo={params.repo}
+      owner={owner}
+      repo={repo}
       from={from}
       to={to}
-      initial={cached}
+      initial={initial}
+      loadError={loadError}
     />
   );
 }

@@ -19,7 +19,7 @@ Maintainers rarely enjoy writing release notes, and default GitHub compare views
 - **Local parsing:** Commits are filtered (noise like merge commits, version-only lines) and **bucketed by convention** (feat/fix, etc.) to save tokens.
 - **Gemini:** One small call per generation for a **2-sentence summary** and **highlight** only—**not** full commit text.
 - **Cache:** Responses can be stored in **Vercel KV** (Redis) so share URLs load fast without re-running GitHub + Gemini.
-- **Sharing:** Route `/r/[owner]/[repo]/[range]`, copy link / embed, **Open Graph** images via `@vercel/og`.
+- **Sharing:** Route `/r/[owner]/[repo]/[range]`, copy link / embed, **Open Graph** images via `@vercel/og`. Opening a share link in a **new browser or device** re-runs the same pipeline on the server when the cache is empty (Redis optional; first visitor may pay GitHub + Gemini cost, then KV stores it for others).
 
 ---
 
