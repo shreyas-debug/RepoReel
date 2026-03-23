@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { compareVersions, getMergedPRs } from "@/lib/github";
+import { compareVersions } from "@/lib/github";
 import { generateNarrative } from "@/lib/gemini";
 import {
   buildMiniSummary,
@@ -75,7 +75,6 @@ export async function POST(request: Request) {
 
   try {
     const compared = await compareVersions(owner, repo, from, to);
-    await getMergedPRs(owner, repo, compared.commits);
 
     const stats = {
       commits: compared.stats.totalCommits,
