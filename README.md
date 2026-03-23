@@ -96,7 +96,7 @@ flowchart LR
 |----------|----------|---------|
 | `GEMINI_API_KEY` | Yes (for AI summary) | Google AI Studio / Gemini API |
 | `GITHUB_TOKEN` | No | Higher GitHub rate limits (5000/hr vs ~60/hr public) |
-| `KV_REST_API_URL`, `KV_REST_API_TOKEN` (or `KV_URL`) | No | Persisted share cache; omit in local dev |
+| `KV_REST_API_URL` + `KV_REST_API_TOKEN`, or **`UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`** | No | Redis cache (e.g. [Upstash for Redis](https://vercel.com/marketplace) on Vercel Storage). RepoReel accepts either naming. Omit in local dev if you rely on sessionStorage. |
 | `NEXT_PUBLIC_SITE_URL` | No | Canonical site URL for OG/metadata (e.g. `https://repo-reel.vercel.app`); Vercel sets `VERCEL_URL` automatically |
 
 Copy `.env.local` locally (not committed):
@@ -132,7 +132,7 @@ Open [http://localhost:3000](http://localhost:3000). Enter a public repo (e.g. `
 
 1. Connect the GitHub repo to Vercel.
 2. Set **Environment variables** in the dashboard: at minimum `GEMINI_API_KEY`; add `GITHUB_TOKEN` and KV for production traffic.
-3. Add a Redis/KV store (e.g. Vercel KV / Upstash) if you want share links to survive without client session storage.
+3. In **Storage** → **Marketplace** → **Upstash for Redis** → **Create**, then **link** the database to this project. Vercel injects REST credentials (often `KV_REST_*` or `UPSTASH_REDIS_*`). Redeploy so the server can read/write the cache.
 4. Optionally set `NEXT_PUBLIC_SITE_URL` to your production domain for consistent OG URLs.
 
 ---

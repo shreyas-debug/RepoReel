@@ -15,12 +15,28 @@ export function buildChangelogCacheKey(
   return cacheKey(owner, repo, from, to);
 }
 
+/** Vercel-linked KV/Redis, or Upstash for Redis (REST URL + token). */
+function redisRestConfig(): { url: string; token: string } | null {
+  const url =
+    process.env.KV_REST_API_URL ?? process.env.UPSTASH_REDIS_REST_URL;
+  const token =
+    process.env.KV_REST_API_TOKEN ?? process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) return null;
+  return { url, token };
+}
+
 function kvConfigured(): boolean {
-  return Boolean(
-    process.env.KV_REST_API_URL ||
-      process.env.KV_URL ||
-      process.env.KV_REST_API_TOKEN,
+  return (
+    Boolean(process.env.KV_URL) ||
+    redisRestConfig() !== null
   );
+}
+
+async function getKv() {
+  const cfg = redisRestConfig();
+  if (!cfg) return null;
+  const { createClient } = await import("@vercel/kv");
+  return createClient({ url: cfg.url, token: cfg.token });
 }
 
 export async function getCachedChangelog(
@@ -31,7 +47,8 @@ export async function getCachedChangelog(
 ): Promise<CachedChangelogPayload | null> {
   if (!kvConfigured()) return null;
   try {
-    const { kv } = await import("@vercel/kv");
+    const kv = await getKv();
+    if (!kv) return null;
     const key = cacheKey(owner, repo, from, to);
     const data = await kv.get<CachedChangelogPayload>(key);
     return data ?? null;
@@ -49,7 +66,8 @@ export async function setCachedChangelog(
 ): Promise<void> {
   if (!kvConfigured()) return;
   try {
-    const { kv } = await import("@vercel/kv");
+    const kv = await getKv();
+    if (!kv) return;
     const key = cacheKey(owner, repo, from, to);
     await kv.set(key, payload, { ex: TTL_SECONDS });
   } catch (e) {
