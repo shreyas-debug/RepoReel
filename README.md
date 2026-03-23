@@ -2,39 +2,141 @@
 
 **Live demo:** [repo-reel.vercel.app](https://repo-reel.vercel.app/)
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+RepoReel turns a public GitHub repository’s changes **between two version tags** into a **visual, shareable changelog**—think “Spotify Wrapped” for releases. It fetches commits via the GitHub API, categorizes them locally, asks Google Gemini for a short narrative (summary + highlight), caches the result, and renders an animated page you can link or embed.
 
-## Getting Started
+---
 
-First, run the development server:
+## The problem
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+Maintainers rarely enjoy writing release notes, and default GitHub compare views are plain text. RepoReel gives you a **structured, on-brand story** for a tag range, with **stats**, **categories** (features, fixes, breaking, performance, dev experience), and a **highlight**—without pasting hundreds of commit messages into an LLM.
+
+---
+
+## What it does
+
+- **Input:** GitHub repo (`owner/repo` or URL) + **From** / **To** tags (older → newer).
+- **GitHub:** Lists tags, compares commits between refs, derives contributor and file stats.
+- **Local parsing:** Commits are filtered (noise like merge commits, version-only lines) and **bucketed by convention** (feat/fix, etc.) to save tokens.
+- **Gemini:** One small call per generation for a **2-sentence summary** and **highlight** only—**not** full commit text.
+- **Cache:** Responses can be stored in **Vercel KV** (Redis) so share URLs load fast without re-running GitHub + Gemini.
+- **Sharing:** Route `/r/[owner]/[repo]/[range]`, copy link / embed, **Open Graph** images via `@vercel/og`.
+
+---
+
+## Architecture (high level)
+
+```mermaid
+flowchart LR
+  subgraph client [Browser]
+    Home[Home]
+    View[Changelog page]
+  end
+  subgraph next [Next.js 14 App Router]
+    API_Tags["/api/tags"]
+    API_Gen["/api/generate"]
+    API_OG["/api/og"]
+  end
+  subgraph external [External]
+    GH[GitHub REST API]
+    GEM[Gemini API]
+    KV[(Vercel KV)]
+  end
+  Home --> API_Tags
+  Home --> API_Gen
+  View --> KV
+  API_Tags --> GH
+  API_Gen --> GH
+  API_Gen --> GEM
+  API_Gen --> KV
+  View -.->|sessionStorage if no KV| View
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- **Frontend:** Next.js, TypeScript, Tailwind, Framer Motion, server + client components.
+- **Backend:** Same app; route handlers orchestrate GitHub + Gemini + KV.
+- **Optional:** KV missing in dev; the client can still open the changelog after generate using **sessionStorage** for that session.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Repository layout
 
-## Learn More
+| Path | Role |
+|------|------|
+| `app/page.tsx` | Home: repo + tags + generate |
+| `app/r/[owner]/[repo]/[range]/page.tsx` | Changelog view + `generateMetadata` (OG/Twitter) |
+| `app/api/tags/[owner]/[repo]/route.ts` | List tags |
+| `app/api/generate/route.ts` | Compare, parse, Gemini, KV write |
+| `app/api/og/route.tsx` | Dynamic 1200×630 social image |
+| `components/Changelog/*` | Header, stats, highlight, categories, share bar |
+| `components/HomePage/*` | Hero, examples |
+| `lib/github.ts` | Octokit: tags, compare |
+| `lib/parser.ts` | Noise filter, categorization, mini summary for Gemini |
+| `lib/gemini.ts` | Narrative JSON from Gemini |
+| `lib/cache.ts` | KV get/set |
+| `lib/range.ts` | Encode/decode `from--to` in URL |
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Tech stack
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Layer | Choices |
+|--------|---------|
+| Framework | Next.js 14 (App Router), TypeScript |
+| Styling | Tailwind CSS |
+| Motion | Framer Motion |
+| GitHub | `@octokit/rest` |
+| AI | `@google/generative-ai` (Gemini Flash family) |
+| Cache | `@vercel/kv` |
+| Social cards | `@vercel/og` (Edge) |
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Environment variables
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Variable | Required | Purpose |
+|----------|----------|---------|
+| `GEMINI_API_KEY` | Yes (for AI summary) | Google AI Studio / Gemini API |
+| `GITHUB_TOKEN` | No | Higher GitHub rate limits (5000/hr vs ~60/hr public) |
+| `KV_REST_API_URL`, `KV_REST_API_TOKEN` (or `KV_URL`) | No | Persisted share cache; omit in local dev |
+| `NEXT_PUBLIC_SITE_URL` | No | Canonical site URL for OG/metadata (e.g. `https://repo-reel.vercel.app`); Vercel sets `VERCEL_URL` automatically |
+
+Copy `.env.local` locally (not committed):
+
+```bash
+GEMINI_API_KEY=your_key
+GITHUB_TOKEN=ghp_optional
+# Optional KV + site URL when deploying
+```
+
+---
+
+## Local development
+
+Install dependencies and run the dev server:
+
+```bash
+npm install
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000). Enter a public repo (e.g. `facebook/react`), pick **From** / **To** tags (older → newer), then **Generate changelog**.
+
+**Sanity checks**
+
+- `npm run build` — production build must pass.
+- `npm run lint` — ESLint.
+- Generate a small range; confirm redirect to `/r/owner/repo/from--to` and that stats + categories render.
+
+---
+
+## Deployment (Vercel)
+
+1. Connect the GitHub repo to Vercel.
+2. Set **Environment variables** in the dashboard: at minimum `GEMINI_API_KEY`; add `GITHUB_TOKEN` and KV for production traffic.
+3. Add a Redis/KV store (e.g. Vercel KV / Upstash) if you want share links to survive without client session storage.
+4. Optionally set `NEXT_PUBLIC_SITE_URL` to your production domain for consistent OG URLs.
+
+---
+
+## Built with
+
+Next.js · React · TypeScript · Tailwind CSS · Framer Motion · Octokit · Google Gemini · Vercel KV · Vercel OG
