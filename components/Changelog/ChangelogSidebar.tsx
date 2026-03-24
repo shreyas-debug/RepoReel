@@ -63,7 +63,7 @@ export function ChangelogSidebar({
   if (visible.length === 0) return null;
 
   return (
-    <aside className="hidden w-56 shrink-0 self-start lg:sticky lg:top-6 lg:block lg:h-fit lg:max-h-[calc(100vh-48px)] lg:overflow-y-auto">
+    <aside className="hidden w-56 shrink-0 self-start lg:block lg:sticky lg:top-6 lg:h-fit lg:max-h-[calc(100vh-48px)] lg:overflow-y-auto">
       <div>
         <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-muted">
           Stats

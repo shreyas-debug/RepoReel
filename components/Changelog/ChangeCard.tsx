@@ -59,13 +59,13 @@ export function ChangeCard({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay: index * 0.04 }}
-      className={`group w-full max-w-full rounded-xl p-5 pl-4 transition-colors duration-150 hover:border-white/20 hover:bg-white/5 ${cardSurface[variant]} ${leftAccent[variant]}`}
+      className={`group w-full max-w-full rounded-xl p-3 pl-3 transition-colors duration-150 hover:border-white/20 hover:bg-white/5 sm:p-4 lg:p-5 lg:pl-4 ${cardSurface[variant]} ${leftAccent[variant]}`}
     >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-        <h3 className="min-w-0 flex-1 text-base font-semibold leading-snug text-foreground sm:text-lg">
+        <h3 className="min-w-0 flex-1 text-sm font-semibold leading-snug text-foreground sm:text-base lg:text-lg">
           {item.title}
         </h3>
-        <div className="flex shrink-0 items-center justify-end gap-2 sm:pt-0.5">
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-1 sm:gap-2 sm:pt-0.5">
           <Badge variant={variantMap[variant]} />
           {prUrl ? (
             <a

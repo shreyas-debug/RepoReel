@@ -46,7 +46,7 @@ function CategorySubsection({
   const moreCount = tail.length;
   const useTwoCol = items.length >= 3;
   const cardsLayoutClass = useTwoCol
-    ? "grid grid-cols-2 gap-3 items-start"
+    ? "grid grid-cols-1 gap-3 items-start sm:grid-cols-2"
     : "flex flex-col gap-3";
 
   return (
@@ -61,13 +61,13 @@ function CategorySubsection({
     >
       <div className="relative">
         <span
-          className="pointer-events-none absolute -top-2 right-0 select-none text-6xl font-black text-white/[0.03]"
+          className="pointer-events-none absolute -top-2 right-0 select-none text-4xl font-black text-white/[0.03] sm:text-6xl"
           aria-hidden
         >
           {items.length}
         </span>
         <h2
-          className={`relative z-10 font-display text-xl font-semibold text-foreground sm:text-2xl ${h2Accent[variant]} border-l-4 pl-3`}
+          className={`relative z-10 font-display text-lg font-semibold text-foreground sm:text-xl lg:text-2xl ${h2Accent[variant]} border-l-4 pl-3`}
         >
           {label}
         </h2>
@@ -111,7 +111,7 @@ function CategorySubsection({
             layout
             onClick={() => setExpanded((e) => !e)}
             className={`text-left text-sm font-medium text-muted underline-offset-4 transition hover:text-foreground hover:underline ${
-              useTwoCol ? "col-span-2 mt-1 w-full" : "mt-3 w-full"
+              useTwoCol ? "mt-1 w-full sm:col-span-2" : "mt-3 w-full"
             }`}
           >
             {expanded ? "Show less ↑" : `Show ${moreCount} more ↓`}

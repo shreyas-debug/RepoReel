@@ -20,6 +20,7 @@ Maintainers rarely enjoy writing release notes, and default GitHub compare views
 - **Gemini:** One small call per generation for a **2-sentence summary** and **highlight** only—**not** full commit text.
 - **Cache:** Responses can be stored in **Vercel KV** (Redis) so share URLs load fast without re-running GitHub + Gemini.
 - **Sharing:** Route `/r/[owner]/[repo]/[range]`, copy link / embed, **Open Graph** images via `@vercel/og`. Opening a share link in a **new browser or device** re-runs the same pipeline on the server when the cache is empty (Redis optional; first visitor may pay GitHub + Gemini cost, then KV stores it for others).
+- **Commit heatmap:** The changelog page shows activity over time in a small grid. Cached payloads include it; older **sessionStorage** entries without it can call **`/api/commit-heatmap`** once to backfill (same GitHub compare, no Gemini).
 
 ---
 
@@ -34,6 +35,7 @@ flowchart LR
   subgraph next [Next.js 14 App Router]
     API_Tags["/api/tags"]
     API_Gen["/api/generate"]
+    API_Heat["/api/commit-heatmap"]
     API_OG["/api/og"]
   end
   subgraph external [External]
@@ -44,10 +46,12 @@ flowchart LR
   Home --> API_Tags
   Home --> API_Gen
   View --> KV
+  View -.->|optional backfill| API_Heat
   API_Tags --> GH
   API_Gen --> GH
   API_Gen --> GEM
   API_Gen --> KV
+  API_Heat --> GH
   View -.->|sessionStorage if no KV| View
 ```
 
@@ -65,13 +69,15 @@ flowchart LR
 | `app/r/[owner]/[repo]/[range]/page.tsx` | Changelog view + `generateMetadata` (OG/Twitter) |
 | `app/api/tags/[owner]/[repo]/route.ts` | List tags |
 | `app/api/generate/route.ts` | Compare, parse, Gemini, KV write |
+| `app/api/commit-heatmap/route.ts` | Backfill commit activity grid (GitHub compare only) |
 | `app/api/og/route.tsx` | Dynamic 1200×630 social image |
-| `components/Changelog/*` | Header, stats, highlight, categories, share bar |
+| `components/Changelog/*` | Header, stats, heatmap, highlight, categories, share, mobile dock |
 | `components/HomePage/*` | Hero, examples |
 | `lib/github.ts` | Octokit: tags, compare |
 | `lib/parser.ts` | Noise filter, categorization, mini summary for Gemini |
 | `lib/gemini.ts` | Narrative JSON from Gemini |
 | `lib/cache.ts` | KV get/set |
+| `lib/commit-heatmap.ts` | Week buckets for the activity heatmap |
 | `lib/range.ts` | Encode/decode `from--to` in URL |
 
 ---
@@ -125,6 +131,8 @@ Open [http://localhost:3000](http://localhost:3000). Enter a public repo (e.g. `
 - `npm run build` — production build must pass.
 - `npm run lint` — ESLint.
 - Generate a small range; confirm redirect to `/r/owner/repo/from--to` and that stats + categories render.
+
+**Optional:** If `next dev` and `next build` fight over `.next` on your machine, use `npm run build:safe` (outputs to `.next-build`) and `npm run start:safe` to run that build—see `scripts/build-safe.mjs` and `scripts/start-safe.mjs`.
 
 ---
 

@@ -29,7 +29,7 @@ export function ScrollToTop() {
           onClick={() =>
             window.scrollTo({ top: 0, behavior: "smooth" })
           }
-          className="fixed bottom-24 right-3 z-50 flex h-9 w-9 items-center justify-center rounded-lg border border-white/15 bg-navy-deep/95 text-foreground shadow-lg backdrop-blur-sm transition hover:border-indigo-brand/40 hover:bg-white/10 sm:bottom-24 sm:right-6 sm:h-10 sm:w-10"
+          className="fixed bottom-36 right-3 z-[60] flex h-9 w-9 items-center justify-center rounded-lg border border-white/15 bg-navy-deep/95 text-foreground shadow-lg backdrop-blur-sm transition hover:border-indigo-brand/40 hover:bg-white/10 lg:bottom-24 sm:right-6 sm:h-10 sm:w-10"
           aria-label="Back to top"
         >
           <svg

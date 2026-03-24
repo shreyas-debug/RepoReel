@@ -61,7 +61,7 @@ export function CommitHeatmap({
   );
 
   return (
-    <section className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-5 py-4">
+    <section className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3 sm:px-5 sm:py-4">
       {/* Header */}
       <div className="mb-3 flex w-full items-center justify-between">
         <p className="text-xs text-slate-400">

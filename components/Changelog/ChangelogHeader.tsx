@@ -74,7 +74,7 @@ export function ChangelogHeader({
             height={40}
             className="h-10 w-10 shrink-0 rounded-lg border border-white/10 bg-white/5 object-cover"
           />
-          <h1 className="min-w-0 font-display text-3xl font-bold tracking-tight text-foreground sm:text-5xl">
+          <h1 className="min-w-0 font-display text-2xl font-bold tracking-tight text-foreground sm:text-3xl lg:text-5xl">
             <span className="text-muted">{owner}/</span>
             {repo}
           </h1>
